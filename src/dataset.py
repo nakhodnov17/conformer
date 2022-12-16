@@ -81,14 +81,15 @@ def get_golos_dataset(base_path, split='train'):
 
 def open_audio(audio_path, desired_sample_rate):
     """ Open and resample audio, average across channels
-            :param str audio_path: path to audio
-            :param in desired_sample_rate: the sampling rate to which we would like to convert the audio
-            :return Tuple[torch.Tensor, int]: (audio, audio_len):
-                audion: 1D tensor with shape (num_timesteps)
-                audio_len: int, len of audio
+        :param str audio_path: path to audio
+        :param in desired_sample_rate: the sampling rate to which we would like to convert the audio
+        :return Tuple[torch.Tensor, int]: (audio, audio_len):
+            audion: 1D tensor with shape (num_timesteps)
+            audio_len: int, len of audio
     """
 
     # Load audio. Use torchaudio
+    ### YOUR CODE HERE
     audio_data, orig_sample_rate = ...
 
     # Resample audio. Use torchaudio.transforms
