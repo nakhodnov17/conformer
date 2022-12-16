@@ -26,6 +26,25 @@ def _strip_text(text):
         :return str:
     """
     ### YOUR CODE HERE
+
+    text = text.lower()
+    text = text.replace('ё', 'е')
+    text0 = []
+    for s in text:
+      if s < 'а' or 'я' < s:
+        s = ' '
+      text0.append(s)
+    text = ''.join(text0)
+    text = text.strip()
+    text0 = []
+    pred = 'a'
+    for s in text:
+      if pred == ' ' and s == ' ':
+        continue
+      text0.append(s)
+      pred = s
+    text = ''.join(text0)
+
     ...
     return text
 
@@ -175,4 +194,4 @@ def collate_fn(batch):
         'tokens_len': batch_tokens_len
     }
 
-    
+
