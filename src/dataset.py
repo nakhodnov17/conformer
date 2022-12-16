@@ -13,6 +13,7 @@ import pandas as pd
 
 import torch
 import torchaudio
+from torch.nn.utils.rnn import pad_sequence
 from torch.utils.data import Dataset, BatchSampler, SequentialSampler, RandomSampler, Sampler
 
 
@@ -53,7 +54,7 @@ def _get_manifest_dataset(base_path, manifest_path):
     # Read manifest file. Parse each line as json and save needed values
     ### YOUR CODE HERE
     full_path = manifest_path
-    with open(full_path, "r") as file:
+    with open(full_path, "r", encoding="utf-8") as file:
       for raw_json in file.readlines():
         parsed_json = json.loads(raw_json)
         wav_paths.append(os.path.join(base_path, parsed_json["audio_filepath"]))
@@ -172,7 +173,7 @@ class AudioDataset(Dataset):
         obj = self.data.iloc[idx]
         audio, audio_len = open_audio(obj["audio_path"], 16000)
 
-        return (audio, audio_len, torch.tensor(obj["tokens"], dtype = torch.long), len(obj["tokens"]))
+        return (obj["audio_path"], audio, audio_len, obj["text"], torch.tensor(obj["tokens"], dtype = torch.long), len(obj["tokens"]))
 
     def __len__(self):
         ### YOUR CODE HERE
@@ -186,22 +187,24 @@ def collate_fn(batch):
     """
     # Pad and concatenate audios. Use torch.nn.utils.rnn.pad_sequence
     ### YOUR CODE HERE
-    batch_audio = ...
+    batch_size = len(batch)
+
+    batch_audio = pad_sequence([batch[i][1] for i in range(batch_size)])
     # Pad and concatenate tokens. Use torch.nn.utils.rnn.pad_sequence
     ### YOUR CODE HERE
-    batch_tokens = ...
+    batch_tokens = pad_sequence([batch[i][4] for i in range(batch_size)])
     
     # Convert ints to torch.LongTensors
     ### YOUR CODE HERE
-    batch_audio_len = ...
+    batch_audio_len = torch.tensor([batch[i][2] for i in range(batch_size)], dtype=torch.long)
     ### YOUR CODE HERE
-    batch_tokens_len = ...
+    batch_tokens_len = torch.tensor([batch[i][5] for i in range(batch_size)], dtype=torch.long)
 
     return {
-        'audio_path': batch_audio_path,
+        'audio_path': [batch[i][0] for i in range(batch_size)],
         'audio': batch_audio,
         'audio_len': batch_audio_len,
-        'text': batch_text,
+        'text': [batch[i][3] for i in range(batch_size)],
         'tokens': batch_tokens,
         'tokens_len': batch_tokens_len
     }
