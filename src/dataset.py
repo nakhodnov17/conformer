@@ -25,8 +25,18 @@ def _strip_text(text):
         :param str text:
         :return str:
     """
+    s = ""
     ### YOUR CODE HERE
-    ...
+    text = text.lower()
+    for i in range(len(text)):
+        if (ord(text[i])>=ord("а") and ord(text[i])<=ord("я")):
+          s+=text[i]
+        else:
+          s+=" "
+    while text.count("  ")>0:
+      text = text.replace("  ", " ")
+    text = text.strip()
+    text = text.replace("ё", "е")
     return text
 
 
@@ -42,7 +52,18 @@ def _get_manifest_dataset(base_path, manifest_path):
     durations = []
     # Read manifest file. Parse each line as json and save needed values
     ### YOUR CODE HERE
-    ...
+    
+    
+    real_path = manifest_path
+    manifest = open(real_path, "r")
+    a = manifest.readlines()
+    for j in a:
+      stroka = json.loads(j)
+      wav_paths.append(os.path.join(base_path, stroka["audio_filepath"]))
+      durations.append(stroka["duration"])
+      text = _strip_text(stroka["text"])
+      texts.append(stroka["text"])
+
 
     # Apply text preprocessing
     ### YOUR CODE HERE
