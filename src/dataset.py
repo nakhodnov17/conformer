@@ -27,6 +27,7 @@ def _strip_text(text):
     """
     ### YOUR CODE HERE
     
+    text = text.lower()
     text = text.strip()
     res_text = ''
     for i in text:
@@ -63,7 +64,7 @@ def _get_manifest_dataset(base_path, manifest_path):
     # Apply text preprocessing
     ### YOUR CODE HERE
     for i in range(len(texts)):
-      texts[i] = _strip_text(texts[i].lower())
+      texts[i] = _strip_text(texts[i])
     
 
     return pd.DataFrame.from_dict({
@@ -113,11 +114,12 @@ def open_audio(audio_path, desired_sample_rate):
 
     # Resample audio. Use torchaudio.transforms
     ### YOUR CODE HERE
-    torchaudio.transforms
+    resemple = torchaudio.transforms.Resample(orig_sample_rate, desired_sample_rate)
+    audio_data = resemple(audio_data)
 
     # Average out audio channels
     ### YOUR CODE HERE
-    ...
+    audio_data = audio_data.mean(0)
 
     return audio_data, audio_data.shape[0]
 
@@ -147,7 +149,7 @@ class AudioDataset(Dataset):
         # Sort data w.r.t. duration
         ### YOUR CODE HERE
         
-        self.data = data.sort("duration")
+        self.data = data.sort_values("duration")
         
         self.tokenizer = tokenizer
 
@@ -158,7 +160,7 @@ class AudioDataset(Dataset):
         # Tokenize all texts
         ### YOUR CODE HERE
         
-        self.data['tokens'] = tokenizer.encode_as_ids(self.data["texts"])
+        self.data['tokens'] = tokenizer.encode_as_ids(list(self.data["text"]))
 
     def __getitem__(self, idx):
         """
@@ -167,13 +169,14 @@ class AudioDataset(Dataset):
         """
         # Load audio with desired sample rate
         ### YOUR CODE HERE
-        audio, audio_len = open_audio(self.data.iloc[idx]["audio_path"], 16000)
+        obj = self.data.iloc[idx]
+        audio, audio_len = open_audio(obj["audio_path"], 16000)
 
-        return ...
+        return (audio, audio_len, torch.tensor(obj["tokens"], dtype = torch.long), len(obj["tokens"]))
 
     def __len__(self):
         ### YOUR CODE HERE
-        ...
+        return self.data.shape[0]
 
 
 def collate_fn(batch):
