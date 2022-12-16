@@ -26,8 +26,17 @@ def _strip_text(text):
         :return str:
     """
     ### YOUR CODE HERE
-    ...
-    return text
+    
+    text = text.strip()
+    res_text = ''
+    for i in text:
+      # If char is cirillic letter or whitespace we append it
+      if 1072 <= ord(i) <= 1103 or (ord(i) == 32 and res_text[-1] != ' '):
+        res_text += i
+
+    res_text = res_text.strip()
+
+    return res_text
 
 
 def _get_manifest_dataset(base_path, manifest_path):
@@ -42,11 +51,20 @@ def _get_manifest_dataset(base_path, manifest_path):
     durations = []
     # Read manifest file. Parse each line as json and save needed values
     ### YOUR CODE HERE
-    ...
+    full_path = manifest_path
+    with open(full_path, "r") as file:
+      for raw_json in file.readlines():
+        parsed_json = json.loads(raw_json)
+        wav_paths.append(os.path.join(base_path, parsed_json["audio_filepath"]))
+        durations.append(parsed_json["duration"])
+        texts.append(parsed_json["text"])
+    
 
     # Apply text preprocessing
     ### YOUR CODE HERE
-    ...
+    for i in range(len(texts)):
+      texts[i] = _strip_text(texts[i].lower())
+    
 
     return pd.DataFrame.from_dict({
         'audio_path': wav_paths,
@@ -61,6 +79,7 @@ def get_libri_speech_dataset(base_path, split='train'):
     base_path = os.path.join(base_path, split)
     manifest_path = os.path.join(base_path, 'manifest.json')
 
+    
     return _get_manifest_dataset(base_path, manifest_path)
 
 
@@ -90,11 +109,11 @@ def open_audio(audio_path, desired_sample_rate):
 
     # Load audio. Use torchaudio
     ### YOUR CODE HERE
-    audio_data, orig_sample_rate = ...
+    audio_data, orig_sample_rate = torchaudio.load(audio_path)
 
     # Resample audio. Use torchaudio.transforms
     ### YOUR CODE HERE
-    ...
+    torchaudio.transforms
 
     # Average out audio channels
     ### YOUR CODE HERE
@@ -116,11 +135,19 @@ class AudioDataset(Dataset):
 
         # Filter out all entities that are longer then max_duration or shorter min_duration
         ### YOUR CODE HERE
-        ...
+        if not max_duration:
+          max_duration = data["duration"].max()
+        if not min_duration:
+          min_duration = 0
+        
+        mask_max = data["duration"] <= max_duration
+        mask_min = data["duration"] >= min_duration
+        data = data[mask_min * mask_max]
+
         # Sort data w.r.t. duration
         ### YOUR CODE HERE
-        ...
-        self.data = ...
+        
+        self.data = data.sort("duration")
         
         self.tokenizer = tokenizer
 
@@ -130,7 +157,8 @@ class AudioDataset(Dataset):
 
         # Tokenize all texts
         ### YOUR CODE HERE
-        self.data['tokens'] = ...
+        
+        self.data['tokens'] = tokenizer.encode_as_ids(self.data["texts"])
 
     def __getitem__(self, idx):
         """
@@ -139,7 +167,7 @@ class AudioDataset(Dataset):
         """
         # Load audio with desired sample rate
         ### YOUR CODE HERE
-        audio, audio_len = ...
+        audio, audio_len = open_audio(self.data.iloc[idx]["audio_path"], 16000)
 
         return ...
 
