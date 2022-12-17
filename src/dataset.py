@@ -26,7 +26,18 @@ def _strip_text(text):
         :return str:
     """
     ### YOUR CODE HERE
-    ...
+    text.replase('ё', 'е')
+    for sym in text:
+        if sym < 'а' or sym > 'я':
+            norm_text += ' '
+        else:
+            norm_text += sym
+    last_sym = 'a'
+    text = ''
+    for sym in norm_text:
+        if sym != ' ' or last_sym != ' ':
+            text += sym
+        last_sym = sym
     return text
 
 
@@ -42,11 +53,16 @@ def _get_manifest_dataset(base_path, manifest_path):
     durations = []
     # Read manifest file. Parse each line as json and save needed values
     ### YOUR CODE HERE
-    ...
+    with open(manifest_path, 'r', encoding='utf-8') as manifest_file:
+        for string in manifest_file:
+            manifest_data = json.loads(string)
+            texts.append(_strip_text(manifest_data["text"]))
+            wav_paths.append(os.path.join(base_path, manifest_data["audio_filepath"]))
+            durations.append(manifest_data["duration"])
 
     # Apply text preprocessing
     ### YOUR CODE HERE
-    ...
+    
 
     return pd.DataFrame.from_dict({
         'audio_path': wav_paths,
