@@ -10,11 +10,11 @@ def make_seq_mask(features, lengths):
         :return torch.Tensor: (batch, 1, time)
     """
     ### YOUR CODE HERE
-    mask = torch.arange(features.shape[1])
+    mask = torch.arange(features.shape[2])
     mask = mask < lengths.unsqueeze(1)
     mask = mask.unsqueeze(1)
     print(mask.shape)
-    print(fetures.shape)
+    print(features.shape)
     return mask
 
 
@@ -88,7 +88,7 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
         # Do not count masked elements that corresponds to padding
         ### YOUR CODE HERE
         features.masked_fill_(mask, 0) # (batch, d, time)
-        means = torch.sum(fetures, dim=-1, keepdims=True) / lengths[:, None, None] # (batch, d, 1)
+        means = torch.sum(features, dim=-1, keepdims=True) / lengths[:, None, None] # (batch, d, 1)
         stds = torch.pow(torch.sum(torch.pow(features - means, 2), dim=-1, keepdims=True) / (lengths[:, None, None] - 1), 0.5) # (batch, d, 1)
 
         # Normalize non-masked elements. Use eps to prevent by-zero-division
