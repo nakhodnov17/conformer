@@ -10,18 +10,16 @@ import librosa
 
 import pandas as pd
 
-
 import torch
 import torchaudio
 from torch.utils.data import Dataset, BatchSampler, SequentialSampler, RandomSampler, Sampler
-
 
 
 def _strip_text(text):
     """Normalize text:
         1. Replace diacritic symbols
         2. Replace all non-cyrillic letter with space
-        3. Strip excess spaces 
+        3. Strip excess spaces
         :param str text:
         :return str:
     """
@@ -29,12 +27,12 @@ def _strip_text(text):
     ### YOUR CODE HERE
     text = text.lower()
     for i in range(len(text)):
-        if (ord(text[i])>=ord("а") and ord(text[i])<=ord("я")):
-          s+=text[i]
+        if (ord(text[i]) >= ord("а") and ord(text[i]) <= ord("я")):
+            s += text[i]
         else:
-          s+=" "
-    while text.count("  ")>0:
-      text = text.replace("  ", " ")
+            s += " "
+    while text.count("  ") > 0:
+        text = text.replace("  ", " ")
     text = text.strip()
     text = text.replace("ё", "е")
     return text
@@ -44,7 +42,7 @@ def _get_manifest_dataset(base_path, manifest_path):
     """Load data from .jsonl manifest file
         :param str base_path: suffix for each audio_path in manifest
         :param str manifest_path: path to manifest file
-        :return pandas.DataFrame: 
+        :return pandas.DataFrame:
     """
 
     texts = []
@@ -52,20 +50,16 @@ def _get_manifest_dataset(base_path, manifest_path):
     durations = []
     # Read manifest file. Parse each line as json and save needed values
     ### YOUR CODE HERE
-    
-    
+
     real_path = manifest_path
     manifest = open(real_path, "r")
     a = manifest.readlines()
     for j in a:
-      stroka = json.loads(j)
-      wav_paths.append(os.path.join(base_path, stroka["audio_filepath"]))
-      durations.append(stroka["duration"])
-      text = _strip_text(stroka["text"])
-      texts.append(stroka["text"])
-
-    
-    
+        stroka = json.loads(j)
+        wav_paths.append(os.path.join(base_path, stroka["audio_filepath"]))
+        durations.append(stroka["duration"])
+        text = _strip_text(stroka["text"])
+        texts.append(stroka["text"])
 
     # Apply text preprocessing
     ### YOUR CODE HERE
@@ -113,14 +107,18 @@ def open_audio(audio_path, desired_sample_rate):
 
     # Load audio. Use torchaudio
     ### YOUR CODE HERE
-    audio_data, orig_sample_rate = ...
+
+    audio_data, orig_sample_rate = torchaudio.load(audio_path)
 
     # Resample audio. Use torchaudio.transforms
     ### YOUR CODE HERE
+    audio_data = torchaudio.transforms.Resample(orig_sample_rate, desired_sample_rate)
+
     ...
 
     # Average out audio channels
     ### YOUR CODE HERE
+    audio_data = audio_data.mean(0)
     ...
 
     return audio_data, audio_data.shape[0]
@@ -139,12 +137,25 @@ class AudioDataset(Dataset):
 
         # Filter out all entities that are longer then max_duration or shorter min_duration
         ### YOUR CODE HERE
-        ...
+        if (max_duration == None):
+            max_duration = max(data["duration"])
+        if (min_duration == None):
+            min_duration = 0
+
+        a = data
+        a.clear()
+        for i in data:
+            if (i["duration"] > max_duration or i["duration"] < min_duration):
+                continue
+            a.append(i)
+
+
+
         # Sort data w.r.t. duration
         ### YOUR CODE HERE
         ...
-        self.data = ...
-        
+        self.data = a.sort_values("duration")
+
         self.tokenizer = tokenizer
 
         self.sample_rate = sample_rate
@@ -153,11 +164,11 @@ class AudioDataset(Dataset):
 
         # Tokenize all texts
         ### YOUR CODE HERE
-        self.data['tokens'] = ...
-
+        self.data['tokens'] = sp_tokenizer.encode_as_ids(["text"])
+        
     def __getitem__(self, idx):
         """
-            :param int idx: 
+            :param int idx:
             :return Tuple[str, torch.FloatTensor, int, str, torch.LongTensor, int]: (audio_path, audio, audio_len, text, tokens, tokens_len)
         """
         # Load audio with desired sample rate
@@ -182,7 +193,7 @@ def collate_fn(batch):
     # Pad and concatenate tokens. Use torch.nn.utils.rnn.pad_sequence
     ### YOUR CODE HERE
     batch_tokens = ...
-    
+
     # Convert ints to torch.LongTensors
     ### YOUR CODE HERE
     batch_audio_len = ...
