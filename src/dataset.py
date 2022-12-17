@@ -64,6 +64,8 @@ def _get_manifest_dataset(base_path, manifest_path):
       text = _strip_text(stroka["text"])
       texts.append(stroka["text"])
 
+    
+    
 
     # Apply text preprocessing
     ### YOUR CODE HERE
