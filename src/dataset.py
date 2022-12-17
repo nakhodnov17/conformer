@@ -106,15 +106,18 @@ def open_audio(audio_path, desired_sample_rate):
 
     # Load audio. Use torchaudio
     ### YOUR CODE HERE
-    audio_data, orig_sample_rate = ...
+    audio_data, orig_sample_rate = torchaudio.load(audio_path)
 
     # Resample audio. Use torchaudio.transforms
     ### YOUR CODE HERE
-    ...
+    
+    transform = torchaudio.transforms.Resample(orig_sample_rate, desired_sample_rate)
+    audio_data = transform(audio_data)
 
     # Average out audio channels
     ### YOUR CODE HERE
-    ...
+    
+    audio_data = torch.mean(audio_data, 0)
 
     return audio_data, audio_data.shape[0]
 
