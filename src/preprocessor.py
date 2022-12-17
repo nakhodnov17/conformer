@@ -10,7 +10,11 @@ def make_seq_mask(features, lengths):
         :return torch.Tensor: (batch, 1, time)
     """
     ### YOUR CODE HERE
-    ...
+    mask = torch.arange(features.shape[1])
+    mask = mask < lengths.unsqueeze(1)
+    mask = mask.unsqueeze(1)
+    print(mask.shape)
+    print(fetures.shape)
     return mask
 
 
@@ -58,8 +62,8 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
         if self.training and self._dither_value > 0.0:
             # Sample random noise with defined magnitude and add it to the signal
             ### YOUR CODE HERE
-            noise = ...
-            signals = ...
+            noise = torch.rand(signals.shape) * self._dither_value
+            signals += noise
         return signals
 
     def _apply_preemphasis(self, signals):
@@ -68,9 +72,9 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
             :return torch.Tensor: (batch, time)
         """
         if self._preemphasis_value is not None:
-            # Transform signal as follows: s_i -> s_i - pv * s_{i + 1}
+            # Transform signal as follows: s_i -> pv * s_{i + 1} - s_i
             ### YOUR CODE HERE
-            ...
+            signals[:, 1:] -= signals[:, :-1] * self._preemphasis_value
         return signals
 
     def _apply_normalization(self, features, lengths, eps=1e-5):
@@ -83,15 +87,16 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
         # Compute statistics for each object and each feature separately
         # Do not count masked elements that corresponds to padding
         ### YOUR CODE HERE
-        means = ... # (batch, d, 1)
-        stds = ... # (batch, d, 1)
+        features.masked_fill_(mask, 0) # (batch, d, time)
+        means = torch.sum(fetures, dim=-1, keepdims=True) / lengths[:, None, None] # (batch, d, 1)
+        stds = torch.pow(torch.sum(torch.pow(features - means, 2), dim=-1, keepdims=True) / (lengths[:, None, None] - 1), 0.5) # (batch, d, 1)
 
         # Normalize non-masked elements. Use eps to prevent by-zero-division
         ### YOUR CODE HERE
-        features = ...
+        features = (features - mean) / (stds + eps)
         # Set masked elements to zero
         ### YOUR CODE HERE
-        features = ...
+        fetures.masked_fill_(mask, 0) # (batch, d, time)
 
         return features
 
@@ -105,24 +110,26 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
         """
         # Apply dithering
         ### YOUR CODE HERE
-        signals = ...
+        signals = self._apply_dithering(signals)
         # Apply preemphasis
         ### YOUR CODE HERE
-        signals = ...
+        signals = self._apply_preemphasis(signals)
         # Compute mel spectrogram features
         ### YOUR CODE HERE
-        features = ...
+        features = self._mel_spec_extractor(signals)
+        
         # Compute log mel spectrogram features. 
         # Use eps to prevent underflow in log
         ### YOUR CODE HERE
-        features = ...
+        features = torch.log(features + eps)
 
         # Compute features lengths
         ### YOUR CODE HERE
-        feature_lengths = ...
+        feature_lengths = lengths // self._n_window_stride + 1
+        
         # Apply features normalization
         ### YOUR CODE HERE
-        features = ...
+        features = self._apply_normalization(features, feature_lengths)
 
         return features, feature_lengths
 

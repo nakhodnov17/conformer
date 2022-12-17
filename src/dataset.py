@@ -30,11 +30,14 @@ def _strip_text(text):
     
     text = text.lower()
     text = text.strip()
+    text.replace("ё", "е")
     res_text = ''
     for i in text:
-      # If char is cirillic letter or whitespace we append it
-      if 1072 <= ord(i) <= 1103 or (ord(i) == 32 and res_text[-1] != ' '):
-        res_text += i
+        # If char is cirillic letter or whitespace we append it
+        if ord("а") <= ord(i) <= ord("я"):
+            res_text += i
+        elif res_text[-1] != ' ':
+            res_text += ' '
 
     res_text = res_text.strip()
 
@@ -189,10 +192,10 @@ def collate_fn(batch):
     ### YOUR CODE HERE
     batch_size = len(batch)
 
-    batch_audio = pad_sequence([batch[i][1] for i in range(batch_size)])
+    batch_audio = pad_sequence([batch[i][1] for i in range(batch_size)], batch_first=True) 
     # Pad and concatenate tokens. Use torch.nn.utils.rnn.pad_sequence
     ### YOUR CODE HERE
-    batch_tokens = pad_sequence([batch[i][4] for i in range(batch_size)])
+    batch_tokens = pad_sequence([batch[i][4] for i in range(batch_size)], batch_first=True)
     
     # Convert ints to torch.LongTensors
     ### YOUR CODE HERE
