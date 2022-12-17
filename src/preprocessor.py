@@ -13,8 +13,7 @@ def make_seq_mask(features, lengths):
     mask = torch.arange(features.shape[2])
     mask = mask < lengths.unsqueeze(1)
     mask = mask.unsqueeze(1)
-    print(mask.shape)
-    print(features.shape)
+
     return mask
 
 
@@ -72,7 +71,7 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
             :return torch.Tensor: (batch, time)
         """
         if self._preemphasis_value is not None:
-            # Transform signal as follows: s_i -> pv * s_{i + 1} - s_i
+            # Transform signal as follows: s_{i + 1} -> s_{i + 1} - pv * s_i
             ### YOUR CODE HERE
             signals[:, 1:] -= signals[:, :-1] * self._preemphasis_value
         return signals
@@ -89,14 +88,17 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
         ### YOUR CODE HERE
         features.masked_fill_(mask, 0) # (batch, d, time)
         means = torch.sum(features, dim=-1, keepdims=True) / lengths[:, None, None] # (batch, d, 1)
-        stds = torch.pow(torch.sum(torch.pow(features - means, 2), dim=-1, keepdims=True) / (lengths[:, None, None] - 1), 0.5) # (batch, d, 1)
+        vrs = torch.sum(torch.pow(features - means, 2).masked_fill(mask, 0), dim=-1, keepdims=True) / (lengths[:, None, None] - 1)
+        vrs.clamp_(float(2.0 ** -24))
+        stds = vrs.sqrt() # (batch, d, 1)
 
         # Normalize non-masked elements. Use eps to prevent by-zero-division
         ### YOUR CODE HERE
-        features = (features - mean) / (stds + eps)
+        features = (features - means) / (stds + eps)
+        
         # Set masked elements to zero
         ### YOUR CODE HERE
-        fetures.masked_fill_(mask, 0) # (batch, d, time)
+        features.masked_fill_(mask, 0) # (batch, d, time)
 
         return features
 
