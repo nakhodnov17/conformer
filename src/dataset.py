@@ -26,7 +26,7 @@ def _strip_text(text):
         :return str:
     """
     ### YOUR CODE HERE
-    text.replase('ё', 'е')
+    text = text.replace('ё', 'е')
     for sym in text:
         if sym < 'а' or sym > 'я':
             norm_text += ' '
@@ -135,7 +135,7 @@ class AudioDataset(Dataset):
 
         # Filter out all entities that are longer then max_duration or shorter min_duration
         ### YOUR CODE HERE
-        
+        ...
         # Sort data w.r.t. duration
         ### YOUR CODE HERE
         ...
