@@ -27,6 +27,7 @@ def _strip_text(text):
     """
     ### YOUR CODE HERE
     text = text.replace('ё', 'е')
+    norm_text = ''
     for sym in text:
         if sym < 'а' or sym > 'я':
             norm_text += ' '
@@ -135,11 +136,16 @@ class AudioDataset(Dataset):
 
         # Filter out all entities that are longer then max_duration or shorter min_duration
         ### YOUR CODE HERE
-        ...
+        
+        mask1 = data['duration'] < min_duration
+        mask2 = data['duration'] > max_duration
+        mask = mask1 * mask2
+        data = data[mask]
+        
         # Sort data w.r.t. duration
         ### YOUR CODE HERE
-        ...
-        self.data = ...
+        data.sort_values(by=['duration'])
+        self.data = data
         
         self.tokenizer = tokenizer
 
@@ -149,7 +155,7 @@ class AudioDataset(Dataset):
 
         # Tokenize all texts
         ### YOUR CODE HERE
-        self.data['tokens'] = ...
+        self.data['tokens'] = self.tokenizer(data['text'])
 
     def __getitem__(self, idx):
         """
@@ -158,9 +164,13 @@ class AudioDataset(Dataset):
         """
         # Load audio with desired sample rate
         ### YOUR CODE HERE
-        audio, audio_len = ...
+        audio, audio_len = open_audio(self.data['audio_path'][idx], self.sample_rate)
 
-        return ...
+        return (self.data['audio_path'][idx],
+                audio, audio_len,
+                self.data['text'][idx],
+                torch.LongTensor(self.data['tokens'][idx]),
+                len(self.data['tokens'][idx]))
 
     def __len__(self):
         ### YOUR CODE HERE
