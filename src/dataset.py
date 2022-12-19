@@ -14,6 +14,8 @@ import torch
 import torchaudio
 from torch.utils.data import Dataset, BatchSampler, SequentialSampler, RandomSampler, Sampler
 
+from torch.nn.utils.rnn import pad_sequence
+
 
 def _strip_text(text):
     """Normalize text:
@@ -52,7 +54,7 @@ def _get_manifest_dataset(base_path, manifest_path):
     ### YOUR CODE HERE
 
     real_path = manifest_path
-    manifest = open(real_path, "r")
+    manifest = open(real_path, "r", encoding = "utf-8")
     a = manifest.readlines()
     for j in a:
         stroka = json.loads(j)
@@ -112,8 +114,8 @@ def open_audio(audio_path, desired_sample_rate):
 
     # Resample audio. Use torchaudio.transforms
     ### YOUR CODE HERE
-    audio_data = torchaudio.transforms.Resample(orig_sample_rate, desired_sample_rate)
-
+    res = torchaudio.transforms.Resample(orig_sample_rate, desired_sample_rate)
+    audio_data = res(audio_data)
     ...
 
     # Average out audio channels
@@ -137,24 +139,22 @@ class AudioDataset(Dataset):
 
         # Filter out all entities that are longer then max_duration or shorter min_duration
         ### YOUR CODE HERE
-        if (max_duration == None):
-            max_duration = max(data["duration"])
-        if (min_duration == None):
+        if (not max_duration ):
+            max_duration = data["duration"].max()
+        if (not min_duration):
             min_duration = 0
 
-        a = data
-        a.clear()
-        for i in data:
-            if (i["duration"] > max_duration or i["duration"] < min_duration):
-                continue
-            a.append(i)
-
-
+            
+            
+        a=data["duration"]>=min_duration
+        b=data["duration"]<=max_duration
+        
+        data = data[a * b]
 
         # Sort data w.r.t. duration
         ### YOUR CODE HERE
         ...
-        self.data = a.sort_values("duration")
+        self.data = data.sort_values("duration")
 
         self.tokenizer = tokenizer
 
@@ -164,7 +164,7 @@ class AudioDataset(Dataset):
 
         # Tokenize all texts
         ### YOUR CODE HERE
-        self.data['tokens'] = sp_tokenizer.encode_as_ids(["text"])
+        self.data['tokens'] = tokenizer.encode_as_ids(list(self.data["text"]))
         
     def __getitem__(self, idx):
         """
@@ -173,13 +173,15 @@ class AudioDataset(Dataset):
         """
         # Load audio with desired sample rate
         ### YOUR CODE HERE
-        audio, audio_len = ...
-
-        return ...
+        element = self.data.iloc[idx]
+        audio, audio_len = open_audio(element["audio_path"], 16000)
+        
+        
+        return (element["audio_path"], audio, audio_len, element["text"], torch.tensor(element["tokens"],  dtype=torch.long), len(element["tokens"]))
 
     def __len__(self):
         ### YOUR CODE HERE
-        ...
+        return self.data.shape[0]
 
 
 def collate_fn(batch):
@@ -189,22 +191,26 @@ def collate_fn(batch):
     """
     # Pad and concatenate audios. Use torch.nn.utils.rnn.pad_sequence
     ### YOUR CODE HERE
-    batch_audio = ...
+    
+    batch_audio = pad_sequence([batch[i][1] for i in range(len(batch))], batch_first=True)
     # Pad and concatenate tokens. Use torch.nn.utils.rnn.pad_sequence
     ### YOUR CODE HERE
-    batch_tokens = ...
+    
+    batch_tokens =  pad_sequence([batch[i][4] for i in range(len(batch))], batch_first=True)
 
     # Convert ints to torch.LongTensors
     ### YOUR CODE HERE
-    batch_audio_len = ...
+    batch_audio_len =  torch.tensor([batch[i][2] for i in range(len(batch))], dtype=torch.long)
     ### YOUR CODE HERE
-    batch_tokens_len = ...
+    batch_tokens_len = torch.tensor([batch[i][5] for i in range(len(batch))], dtype=torch.long)
 
+    
+    
     return {
-        'audio_path': batch_audio_path,
+        'audio_path': [batch[i][0] for i in range(len(batch))],
         'audio': batch_audio,
         'audio_len': batch_audio_len,
-        'text': batch_text,
+        'text': [batch[i][3] for i in range(len(batch))],
         'tokens': batch_tokens,
         'tokens_len': batch_tokens_len
     }
