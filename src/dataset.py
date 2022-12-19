@@ -139,7 +139,7 @@ class AudioDataset(Dataset):
         
         mask1 = data['duration'] < min_duration
         mask2 = data['duration'] > max_duration
-        mask = mask1 * mask2
+        mask = mask1 & mask2
         data = data[mask]
         
         # Sort data w.r.t. duration
@@ -155,7 +155,7 @@ class AudioDataset(Dataset):
 
         # Tokenize all texts
         ### YOUR CODE HERE
-        self.data['tokens'] = self.tokenizer(data['text'])
+        self.data['tokens'] = self.tokenizer.encode_as_ids(list(data['text']))
 
     def __getitem__(self, idx):
         """
@@ -174,27 +174,30 @@ class AudioDataset(Dataset):
 
     def __len__(self):
         ### YOUR CODE HERE
-        ...
+        return len(self.data["duration"])
 
 
 def collate_fn(batch):
     """
+        (audio_path, audio, audio_len, text, tokens, tokens_len)
         :param: List[Tuple[str, torch.FloatTensor, int, str, torch.LongTensor, int]] batch: list of elements with length=batch_size
         :return dict:
     """
     # Pad and concatenate audios. Use torch.nn.utils.rnn.pad_sequence
     ### YOUR CODE HERE
-    batch_audio = ...
+    batch_audio = torch.nn.utils.rnn.pad_sequence([x[1] for x in batch])
     # Pad and concatenate tokens. Use torch.nn.utils.rnn.pad_sequence
     ### YOUR CODE HERE
-    batch_tokens = ...
+    batch_tokens = torch.nn.utils.rnn.pad_sequence([x[4] for x in batch])
     
     # Convert ints to torch.LongTensors
     ### YOUR CODE HERE
-    batch_audio_len = ...
+    batch_audio_len = torch.LongTensor([x[2] for x in batch])
     ### YOUR CODE HERE
-    batch_tokens_len = ...
-
+    batch_tokens_len = torch.LongTensor([x[5] for x in batch])
+    batch_audio_path = [x[0] for x in batch]
+    batch_text = [x[3] for x in batch]
+    
     return {
         'audio_path': batch_audio_path,
         'audio': batch_audio,
