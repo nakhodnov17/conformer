@@ -18,7 +18,16 @@ def ctc_greedy_decoding(logits, logits_len, blank_id, tokenizer):
 
     hypotheses = []
     ### YOUR CODE HERE
-    ...
+    logits = torch.argmax(logits, dim=2)
+    for tokens_tensor, tokens_len in zip(logits, logits_len):
+        tokens_tensor = tokens_tensor[:tokens_len]
+        mask1 = tokens_tensor[1:] != tokens_tensor[:-1]
+        mask2 = tokens_tensor != blank_id
+        mask2[1:] &= mask1
+        tokens_tensor = tokens_tensor[mask2]
+        tokens_list = token_tensor.tolist()
+        hypotheses.append(tokenizer.decode(tokens_list))
+        indx += 1
 
     return hypotheses
 
