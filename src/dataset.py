@@ -137,15 +137,16 @@ class AudioDataset(Dataset):
         # Filter out all entities that are longer then max_duration or shorter min_duration
         ### YOUR CODE HERE
         
-        mask1 = data['duration'] < min_duration
-        mask2 = data['duration'] > max_duration
+        mask1 = data['duration'] >= min_duration
+        mask2 = data['duration'] <= max_duration
         mask = mask1 & mask2
         data = data[mask]
         
         # Sort data w.r.t. duration
         ### YOUR CODE HERE
-        data.sort_values(by=['duration'])
+        data = data.sort_values(by=['duration'])
         self.data = data
+        # print(self.data.shape)
         
         self.tokenizer = tokenizer
 
@@ -156,7 +157,7 @@ class AudioDataset(Dataset):
         # Tokenize all texts
         ### YOUR CODE HERE
         self.data['tokens'] = self.tokenizer.encode_as_ids(list(data['text']))
-
+        
     def __getitem__(self, idx):
         """
             :param int idx: 
@@ -192,9 +193,9 @@ def collate_fn(batch):
     
     # Convert ints to torch.LongTensors
     ### YOUR CODE HERE
-    batch_audio_len = torch.LongTensor([x[2] for x in batch])
+    batch_audio_len = torch.tensor([x[2] for x in batch], dtype=torch.long)
     ### YOUR CODE HERE
-    batch_tokens_len = torch.LongTensor([x[5] for x in batch])
+    batch_tokens_len = torch.tensor([x[5] for x in batch], dtype=torch.long)
     batch_audio_path = [x[0] for x in batch]
     batch_text = [x[3] for x in batch]
     
