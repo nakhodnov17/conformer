@@ -165,13 +165,13 @@ class AudioDataset(Dataset):
         """
         # Load audio with desired sample rate
         ### YOUR CODE HERE
-        audio, audio_len = open_audio(self.data['audio_path'][idx], self.sample_rate)
+        audio, audio_len = open_audio(self.data['audio_path'].iloc[idx], self.sample_rate)
 
-        return (self.data['audio_path'][idx],
+        return (self.data['audio_path'].iloc[idx],
                 audio, audio_len,
-                self.data['text'][idx],
-                torch.LongTensor(self.data['tokens'][idx]),
-                len(self.data['tokens'][idx]))
+                self.data['text'].iloc[idx],
+                torch.LongTensor(self.data['tokens'].iloc[idx]),
+                len(self.data['tokens'].iloc[idx]))
 
     def __len__(self):
         ### YOUR CODE HERE
@@ -186,10 +186,10 @@ def collate_fn(batch):
     """
     # Pad and concatenate audios. Use torch.nn.utils.rnn.pad_sequence
     ### YOUR CODE HERE
-    batch_audio = torch.nn.utils.rnn.pad_sequence([x[1] for x in batch])
+    batch_audio = torch.nn.utils.rnn.pad_sequence([x[1] for x in batch], True)
     # Pad and concatenate tokens. Use torch.nn.utils.rnn.pad_sequence
     ### YOUR CODE HERE
-    batch_tokens = torch.nn.utils.rnn.pad_sequence([x[4] for x in batch])
+    batch_tokens = torch.nn.utils.rnn.pad_sequence([x[4] for x in batch], True)
     
     # Convert ints to torch.LongTensors
     ### YOUR CODE HERE
