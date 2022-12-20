@@ -16,7 +16,7 @@ class ConformerDecoder(torch.nn.Module):
         self.decoder_layers = torch.nn.Sequential(
             # Create pointwise convolution to change number of channels
             ### YOUR CODE HERE
-            ...
+            torch.nn.Conv1d(self._feat_in, self._num_classes, 1)
         )
 
     def forward(self, encoder_output):
@@ -28,10 +28,10 @@ class ConformerDecoder(torch.nn.Module):
 
         # Apply pointwise convolution to change number of channels
         ### YOUR CODE HERE
-        logits = ... # (batch, num_classes, time)
+        logits = self.decoder_layers(encoder_output) # (batch, num_classes, time)
 
         # Transpose logits and apply log_softmax
         ### YOUR CODE HERE
-        logits = ...
+        logits = torch.nn.functional.log_softmax(torch.transpose(logits, 1, 2), dim=-1)
 
         return logits

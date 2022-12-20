@@ -14,12 +14,12 @@ class ConformerFeedForward(torch.nn.Module):
         self.d_ff = d_ff
 
         ### YOUR CODE HERE
-        self.layer_norm = torch.nn.LayerNorm(d_model)  # CORRCET LENGTH?
+        self.layer_norm = torch.nn.LayerNorm(d_model)
         self.linear_1 = torch.nn.Linear(d_model, d_ff)
         self.activation = torch.nn.SiLU()
-        self.dropout_1 = torch.nn.Dropout(dropout)
+        self.dropout_1 = torch.nn.Dropout(p=dropout)
         self.linear_2 = torch.nn.Linear(d_ff, d_model) 
-        self.dropout_2 = torch.nn.Dropout(dropout)
+        self.dropout_2 = torch.nn.Dropout(p=dropout)
 
     def forward(self, x):
         """

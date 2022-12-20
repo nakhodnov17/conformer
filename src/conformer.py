@@ -3,6 +3,7 @@ import torch
 from src.decoder import ConformerDecoder
 from src.encoder import ConformerEncoder
 from src.preprocessor import AudioToMelSpectrogramPreprocessor
+from src.augmentation import SpectogramAugmentation
 
 
 class Conformer(torch.nn.Module):
@@ -38,16 +39,23 @@ class Conformer(torch.nn.Module):
 
         # Create audio to spectrogram preprocessor
         ### YOUR CODE HERE
-        self.preprocessor = ...
+        self.preprocessor = AudioToMelSpectogramPreprocessor()
         # Create Conformer encoder
         ### YOUR CODE HERE
-        self.encoder = ...
+        self.encoder = ConformerEncoder(self.preprocessor._num_filters,
+                                        self.d_model, n_layers,
+                                        sampling_num=sampling_num, 
+                                        sampling_conv_channels=sampling_conv_channels,
+                                        ff_expansion_factor=ff_expansion_factor,
+                                        n_heads=n_heads, conv_kernel_size=conv_kernel_size,
+                                        dropout=dropout, dropout_att=dropout_att)
         # Create Conformer decoder
         ### YOUR CODE HERE
-        self.decoder = ...
+        self.decoder = ConformerDecoder(d_model, num_classes)
         # Create spectrogram augmentation module
         ### YOUR CODE HERE
-        self.spec_augmentation = ...
+        self.spec_augmentation = SpectrogramAugmentation(freq_masks=2, time_masks=10, freq_width=27, time_width=0.05)
+
 
         self.loss = torch.nn.CTCLoss(blank=num_classes)
 
@@ -61,23 +69,23 @@ class Conformer(torch.nn.Module):
                 greedy_predictions: (batch, time)
         """
         # Transform raw audio to spectrogram features
-        features, feature_lengths = ...
+        features, feature_lengths = self.preprocessor(signals, lengths)
 
         # Apply spectrogram augmentation
         if self.spec_augmentation is not None and self.training:
-            features = ...
+            features = self.spec_augmentation(features, feature_lengths)
 
         # Apply Conformer encoder
         ### YOUR CODE HERE
-        encoded, encoded_len = ...
+        encoded, encoded_len = self.encoder(features, feature_lengths)
 
         # Apply Conformer decoder
         ### YOUR CODE HERE
-        log_probs = ...
+        log_probs = self.decoder(encoded)
 
         # Make greedy predictions for each position
         ### YOUR CODE HERE
-        greedy_predictions = ...
+        greedy_predictions = torch.argmax(log_probs, dim=-1)
 
         return (
             log_probs,

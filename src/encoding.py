@@ -44,9 +44,10 @@ class RelPositionalEncoding(torch.nn.Module):
         pe = torch.zeros(pos_length, self.d_model, device=positions.device, dtype=positions.dtype)
         ### YOUR CODE HERE
         positinos = positions.view(-1, 1)
-        pe = torch.arange(d_model, device=positions.device, dtype=positions.dtype)
-        pe[:, ::2] = math.sin(positions / exp((pe[:, ::2] / d_model) * math.log(10000)))
-        pe[:, 1::2] = math.cos(positions / exp((pe[:, 1::2] / d_model) * math.log(10000)))
+        pe[:] = torch.arange(self.d_model, device=positions.device, dtype=positions.dtype)
+        pe[:, ::2] = torch.sin(positions / torch.exp((pe[:, ::2] / self.d_model) * math.log(10000)))
+        pe[:, 1::2] = torch.cos(positions / torch.exp((pe[:, 1::2] / self.d_model) * math.log(10000)))
+        pe.unsqueeze_(0)
         
 
         # Save precomputed positional embeddings
@@ -87,10 +88,10 @@ class RelPositionalEncoding(torch.nn.Module):
         # Negative positions would be used for right and positive for left tokens
         # for input of length L, 2*L-1 positions are needed, positions from (L-1) to -(L-1)
         ### YOUR CODE HERE
-        length = x.size[1]
+        length = x.size(1)
         start_pos: int = self.center_pos - length
-        end_pos: int = self.center_pos + length
-        pos_emb = self.pe[start_pos:end_pos]
+        end_pos: int = self.center_pos + length - 1
+        pos_emb = self.pe[:, start_pos:end_pos]
 
         # Apply positional embeddings dropout
         ### YOUR CODE HERE

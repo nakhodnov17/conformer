@@ -10,7 +10,7 @@ def make_seq_mask(features, lengths):
         :return torch.Tensor: (batch, 1, time)
     """
     ### YOUR CODE HERE
-    mask = torch.arange(features.shape[2])
+    mask = torch.arange(features.shape[2], device=lengths.device, dtype=lengths.dtype)
     mask = mask < lengths.unsqueeze(1)
     mask = mask.unsqueeze(1)
 
@@ -148,7 +148,7 @@ def calc_length(length, conv_params):
     dillation = conv_params.get('dillation', 1)
 
     ### YOUR CODE HERE
-    return (length - (kernel_size - 1) * dillation  + 2 * padding - 1) // stride + 1
+    return ((length + 2 * padding - (kernel_size - 1) * dillation - 1) // stride) + 1
 
 
 class ConvSubsampling(torch.nn.Module):
@@ -182,19 +182,20 @@ class ConvSubsampling(torch.nn.Module):
         # Compute number of output features after this layers. Use calc_length
         ### YOUR CODE HERE
         for i in range(self._sampling_num):
-            conv_layers.append(torch.nn.Conv2d((self._feat_in if i == 0 else self._conv_channels),
-                                            (self._feat_out if i == self._sampling_num - 1 else self.conv_channels),
+            conv_layers.append(torch.nn.Conv2d((1 if i == 0 else self._conv_channels),
+                                             self._conv_channels,
                                              self.conv_params["kernel_size"],
                                              stride=self.conv_params["stride"],
                                              padding=self.conv_params["padding"]))
-            out_features = calc_length(out_features[-1], self.conv_params)
+            conv_layers.append(activation)
+            out_features = calc_length(out_features, self.conv_params)
 
         self.conv = torch.nn.Sequential(*conv_layers)
 
         # Create linear projection layer
         ### YOUR CODE HERE
-        
-        self.out = torch.nn.Linear(out_features, feat_out)
+
+        self.out = torch.nn.Linear(out_features * self._conv_channels, feat_out)
 
     def forward(self, x, lengths):
         """
@@ -205,11 +206,14 @@ class ConvSubsampling(torch.nn.Module):
         # Compute output sequence length. Use calc_length
         ### YOUR CODE HERE
         for i in range(self._sampling_num):
-            lengths = calc_length(lengthgs, self.conv_params)
+            lengths = calc_length(lengths, self.conv_params)
 
         # Apply convolution layers
         ### YOUR CODE HERE
+        
+        x.unsqueeze_(1)
         x = self.conv.forward(x)
+        x = torch.transpose(x, 1, 2).reshape(x.shape[0], x.shape[2], -1)  # Making 4D tensor 3D by combining channels and features
         
         # Apply feed forward layer
         ### YOUR CODE HERE
