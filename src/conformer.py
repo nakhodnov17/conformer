@@ -3,7 +3,7 @@ import torch
 from src.decoder import ConformerDecoder
 from src.encoder import ConformerEncoder
 from src.preprocessor import AudioToMelSpectrogramPreprocessor
-from src.augmentation import SpectogramAugmentation
+from src.augmentation import SpectrogramAugmentation
 
 
 class Conformer(torch.nn.Module):
@@ -39,7 +39,7 @@ class Conformer(torch.nn.Module):
 
         # Create audio to spectrogram preprocessor
         ### YOUR CODE HERE
-        self.preprocessor = AudioToMelSpectogramPreprocessor()
+        self.preprocessor = AudioToMelSpectrogramPreprocessor()
         # Create Conformer encoder
         ### YOUR CODE HERE
         self.encoder = ConformerEncoder(self.preprocessor._num_filters,

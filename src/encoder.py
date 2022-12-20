@@ -54,7 +54,7 @@ class ConformerEncoder(torch.nn.Module):
         # pad_mask is the masking to be used to ignore paddings
         ### YOUR CODE HERE
         pad_mask = torch.arange(max_length, device=device, dtype=lengths.dtype).unsqueeze(0)
-        pad mask = pad_mask >= lengths.unsqueeze(1)
+        pad_mask = pad_mask >= lengths.unsqueeze(1)
 
         # att_mask is the masking to be used in self-attention
         ### YOUR CODE HERE

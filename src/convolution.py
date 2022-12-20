@@ -14,7 +14,7 @@ class ConformerConvolution(torch.nn.Module):
         self.batch_norm = torch.nn.BatchNorm1d(d_model)
         self.glu_activation = torch.nn.GLU(dim=1)
         self.silu_activation = torch.nn.SiLU()
-        self.pointwise_conv2 = torch.nn.Conv1d(d_model, 2 * d_model, 1)
+        self.pointwise_conv2 = torch.nn.Conv1d(d_model, d_model, 1)
         self.dropout = torch.nn.Dropout(dropout)
 
     def forward(self, x, pad_mask=None):
@@ -35,7 +35,7 @@ class ConformerConvolution(torch.nn.Module):
         if pad_mask is not None:
             # Fill elements correspond to padding with zeros
             ### YOUR CODE HERE
-            x.masked_fill_(pad_mask, 0)
+            x.masked_fill_(pad_mask.unsqueeze(1), 0)
 
         # Apply depthwise convolution
         # Apply batchnorm
