@@ -39,7 +39,7 @@ def beam_search_decoding(logits, logits_len, blank_id, tokenizer, beam_size=10):
         :param int blank_id:
         :param sentencepiece.SentencePieceProcessor tokenizer:
         :param int beam_size:
-        :returns: List[List[Tuple[str, int]]]
+        :returns: List[List[Tuple[str, float]]]
     """
     
     hypotheses = []
@@ -61,10 +61,7 @@ def beam_search_decoding(logits, logits_len, blank_id, tokenizer, beam_size=10):
                     if token == blank_id:
                         new_hypos.add(string)
                         
-                        if prob_blank[string][1] != blank_id:
-                            last_token = prob_blank[string][1]
-                        else:
-                            last_token = prob_non_blank[string][1]
+                        last_token = prob_blank[string][1]
                         
                         new_prob_blank[string] = [
                             time_tokens_tensor[i][token] + math.log(
@@ -87,8 +84,31 @@ def beam_search_decoding(logits, logits_len, blank_id, tokenizer, beam_size=10):
                                     math.exp(prob_non_blank[string][0])
                                 ), token
                             ]
+            list1 = []
+            for key in new_hypos:
+                list1.append((key, new_prob_blank[key][0], new_prob_blank[key][1], 0))
+                list1.append((key, new_prob_non_blank[key][0], new_prob_non_blank[key][1], 1))
+            list1.sort(key=lambda: x[1], reverse=True)
+            
+            hypos.clear()
+            prob_blank.clear()
+            prob_non_blank.clear()
+            new_hypos.clear()
+            new_prob_blank.clear()
+            new_prob_non_blank.clear()
+            
+            for i in range(min(beam_size, len(list1))):
+                hypos.add(list1[i][0])
+                if list1[i][3] == 0:
+                    prob_blank[list1[i][0]] = [list1[i][1], list1[i][2]]
+                else:
+                    prob_non_blank[list1[i][0]] = [list1[i][1], list1[i][2]]
+        list1 = []
+        for key in hypos:
+            list1.append((key, math.log(math.exp(prob_blank[key][0]) + math.exp(prob_non_blank[key][0]))))
+        hypotheses.append(list1)
     
-    return 
+    return hypotheses
 
 @torch.no_grad()
 def decode(model, signals, lengths, tokenizer, is_eval=True):
