@@ -10,22 +10,26 @@ def make_seq_mask(features, lengths):
         :return torch.Tensor: (batch, 1, time)
     """
     ### YOUR CODE HERE
+    mask = torch.arange(features.shape[2])
+    mask = mask < lengths.unsqueeze(1)
+    mask = mask.unsqueeze(1)
+    
     ...
     return mask
 
 
 class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
     def __init__(
-        self,
+            self,
 
-        sample_rate=16000,
-        window_size=0.025,
-        window_stride=0.01,
+            sample_rate=16000,
+            window_size=0.025,
+            window_stride=0.01,
 
-        nfilt=80, n_fft=512,
-        window_fn=torch.hann_window,
+            nfilt=80, n_fft=512,
+            window_fn=torch.hann_window,
 
-        dither=1e-5, preemph=0.97,
+            dither=1e-5, preemph=0.97,
     ):
         super().__init__()
 
@@ -56,10 +60,10 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
             :return torch.Tensor: (batch, time)
         """
         if self.training and self._dither_value > 0.0:
-            # Sample random noise with defined magnitude and add it to the signal
+            # Sample random noise with defined magnitude and add it to the signal\
             ### YOUR CODE HERE
-            noise = ...
-            signals = ...
+            noise = torch.randn(len(signals)) * self._dither_value
+            signals = signals + noise
         return signals
 
     def _apply_preemphasis(self, signals):
@@ -68,9 +72,14 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
             :return torch.Tensor: (batch, time)
         """
         if self._preemphasis_value is not None:
-            # Transform signal as follows: s_i -> s_i - pv * s_{i + 1}
+            # Transform signal as follows: s_i -> s_i - pv * s_{i - 1}
             ### YOUR CODE HERE
             ...
+
+            signals[:, 1:] = signals[:, 1:] - signals[:, :-1] * self._preemphasis_value
+
+        #             for i in range(1, len(signals)):
+        #                 signals[i] -= signals[i-1]*self._preemphasis_value
         return signals
 
     def _apply_normalization(self, features, lengths, eps=1e-5):
@@ -83,15 +92,17 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
         # Compute statistics for each object and each feature separately
         # Do not count masked elements that corresponds to padding
         ### YOUR CODE HERE
-        means = ... # (batch, d, 1)
-        stds = ... # (batch, d, 1)
+        features.masked_fill_(mask, 0)
+        
+        means = torch.sum(features, dim=-1, keepdim=True) / lengths [:, None, None]  # (batch, d, 1)
+        stds = (torch.sum(torch.pow(features - means, 2).masked_fill(mask, 0), dim=-1, keepdim=True) / (lengths[:, None, None]-1)).sqrt()
 
         # Normalize non-masked elements. Use eps to prevent by-zero-division
         ### YOUR CODE HERE
-        features = ...
+        features = (features - means)/(stds+eps)
         # Set masked elements to zero
         ### YOUR CODE HERE
-        features = ...
+        features.masked_fill_(mask, 0)
 
         return features
 
@@ -105,31 +116,31 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
         """
         # Apply dithering
         ### YOUR CODE HERE
-        signals = ...
+        signals = self._apply_dithering(signals)
         # Apply preemphasis
         ### YOUR CODE HERE
-        signals = ...
+        signals = self._apply_preemphasis(signals)
         # Compute mel spectrogram features
         ### YOUR CODE HERE
-        features = ...
-        # Compute log mel spectrogram features. 
+        features = self._mel_spec_extractor(signals)
+        # Compute log mel spectrogram features.
         # Use eps to prevent underflow in log
         ### YOUR CODE HERE
-        features = ...
+        features = torch.log(features+eps)
 
         # Compute features lengths
         ### YOUR CODE HERE
-        feature_lengths = ...
+        feature_lengths = lengths // self._n_window_stride + 1
         # Apply features normalization
         ### YOUR CODE HERE
-        features = ...
+        features = self._apply_normalization(features, lengths)
 
         return features, feature_lengths
 
 
 def calc_length(length, conv_params):
     """
-        :param torch.Tensor length: (1) or (batch) 
+        :param torch.Tensor length: (1) or (batch)
         :param dict conv_params: dictionary with parameters of convolution layer
         :return torch.LongTensor: (1) or (batch). Spatial size after convolution with `conv_params` parameters
     """
@@ -140,15 +151,16 @@ def calc_length(length, conv_params):
 
     ### YOUR CODE HERE
     ...
+    return (length ) // stride + 1
 
 
 class ConvSubsampling(torch.nn.Module):
     def __init__(
-        self, feat_in, feat_out, sampling_num, conv_channels,
-        activation=torch.nn.ReLU()
+            self, feat_in, feat_out, sampling_num, conv_channels,
+            activation=torch.nn.ReLU()
     ):
         """
-            :param int feat_in: 
+            :param int feat_in:
             :param int feat_out:
             :param int sampling_num: number of consecutive convolution subsamples
             :param int conv_channels: number of intermediate channels
@@ -193,7 +205,7 @@ class ConvSubsampling(torch.nn.Module):
         # Apply convolution layers
         ### YOUR CODE HERE
         ...
-        
+
         # Apply feed forward layer
         ### YOUR CODE HERE
         ...

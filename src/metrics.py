@@ -60,6 +60,13 @@ def word_error_rate(hypotheses, references):
     """
     ### YOUR CODE HERE
     ...
+    words = 0
+    scores = 0
+    
+    for a, b in zip(hypotheses, references):
+        scores+=editdistance.eval(a.split(), b.split())
+        words+=len(b.split())
+    wer = scores/words
 
     return wer, words, scores
 
