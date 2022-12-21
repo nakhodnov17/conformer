@@ -75,7 +75,7 @@ class ConformerEncoder(torch.nn.Module):
         
         # Apply pre encoding subsampling
         ### YOUR CODE HERE
-        features, features_lengths = self.pre_encode(features, feature_lengths)
+        features, feature_lengths = self.pre_encode(features, feature_lengths)
 
         # Apply positional encoding
         ### YOUR CODE HERE

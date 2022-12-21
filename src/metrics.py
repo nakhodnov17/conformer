@@ -18,7 +18,15 @@ def ctc_greedy_decoding(logits, logits_len, blank_id, tokenizer):
 
     hypotheses = []
     ### YOUR CODE HERE
-    ...
+    logits = torch.argmax(logits, dim=2)
+    for tokens_tensor, tokens_len in zip(logits, logits_len):
+        tokens_tensor = tokens_tensor[:tokens_len]
+        mask1 = tokens_tensor[1:] != tokens_tensor[:-1]
+        mask2 = tokens_tensor != blank_id
+        mask2[1:] &= mask1
+        tokens_tensor = tokens_tensor[mask2]
+        tokens_list = tokens_tensor.tolist()
+        hypotheses.append(tokenizer.decode(tokens_list))
 
     return hypotheses
 
@@ -59,7 +67,13 @@ def word_error_rate(hypotheses, references):
             int scores: sum of distances between hypotheses and references. I.e. wer numerator
     """
     ### YOUR CODE HERE
-    ...
+    words = 0
+    scores = 0
+    
+    for a, b in zip(hypotheses, references):
+        scores+=editdistance.eval(a.split(), b.split())
+        words+=len(b.split())
+    wer = scores/words
 
     return wer, words, scores
 
@@ -90,15 +104,16 @@ class WERMetric(torchmetrics.Metric):
         """
         # Compute hypotheses for given logits
         ### YOUR CODE HERE
-        ...
+        hypothesis = ctc_greedy_decoding(logits, logits_len, self.blank_id, self.tokenizer)
 
         # Calculate WER statistics
         ### YOUR CODE HERE
-        ...
+        _, words, scores = word_error_rate(hypothesis, references)
 
         # Update statistics
         ### YOUR CODE HERE
-        ...
+        self.words += words
+        self.scores += scores
 
     def compute(self):
         """Compute aggregated statistics
@@ -109,7 +124,9 @@ class WERMetric(torchmetrics.Metric):
         """
 
         ### YOUR CODE HERE
-        ...
+        words = self.words.item()
+        scores = self.scores.item()
+        wer = scores / words
 
         return wer, words, scores
 
@@ -135,7 +152,8 @@ class CTCLossMetric(torchmetrics.Metric):
 
         # Update statistics
         ### YOUR CODE HERE
-        ...
+        self.loss += loss
+        self.num_objects += num_objects
 
     def compute(self):
         """Compute aggregated statistics
@@ -147,6 +165,8 @@ class CTCLossMetric(torchmetrics.Metric):
         
         # Update statistics
         ### YOUR CODE HERE
-        ...
+        loss = self.loss.item()
+        num_objects = self.num_objects.item()
+        mean_loss = loss / num_objects
 
         return mean_loss, loss, num_objects

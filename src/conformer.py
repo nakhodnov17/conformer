@@ -57,7 +57,7 @@ class Conformer(torch.nn.Module):
         self.spec_augmentation = SpectrogramAugmentation(freq_masks=2, time_masks=10, freq_width=27, time_width=0.05)
 
 
-        self.loss = torch.nn.CTCLoss(blank=num_classes)
+        self.loss = torch.nn.CTCLoss(blank=num_classes, reduction="none")
 
     def forward(self, signals=None, lengths=None):
         """

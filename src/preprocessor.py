@@ -61,7 +61,7 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
         if self.training and self._dither_value > 0.0:
             # Sample random noise with defined magnitude and add it to the signal
             ### YOUR CODE HERE
-            noise = torch.rand(signals.shape) * self._dither_value
+            noise = torch.randn(signals.shape, device=signals.device) * self._dither_value
             signals += noise
         return signals
 
@@ -127,7 +127,7 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
 
         # Compute features lengths
         ### YOUR CODE HERE
-        feature_lengths = lengths // self._n_window_stride + 1
+        feature_lengths = torch.div(lengths, self._n_window_stride, rounding_mode="floor") + 1
         
         # Apply features normalization
         ### YOUR CODE HERE
@@ -148,7 +148,7 @@ def calc_length(length, conv_params):
     dillation = conv_params.get('dillation', 1)
 
     ### YOUR CODE HERE
-    return ((length + 2 * padding - (kernel_size - 1) * dillation - 1) // stride) + 1
+    return torch.div((length + 2 * padding - (kernel_size - 1) * dillation - 1), stride, rounding_mode="floor") + 1
 
 
 class ConvSubsampling(torch.nn.Module):
@@ -207,7 +207,7 @@ class ConvSubsampling(torch.nn.Module):
         ### YOUR CODE HERE
         for i in range(self._sampling_num):
             lengths = calc_length(lengths, self.conv_params)
-
+        
         # Apply convolution layers
         ### YOUR CODE HERE
         

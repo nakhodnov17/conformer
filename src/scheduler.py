@@ -48,6 +48,6 @@ class NoamAnnealing(torch.optim.lr_scheduler._LRScheduler):
         """
 
         ### YOUR CODE HERE
-        ...
+        out_lr = min(max(initial_lr * self._normalize * step**(-0.5), self.min_lr), initial_lr * self._normalize * step * self.warmup_steps**(-1.5))
 
         return out_lr
