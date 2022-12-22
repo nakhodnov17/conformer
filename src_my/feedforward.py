@@ -14,12 +14,12 @@ class ConformerFeedForward(torch.nn.Module):
         self.d_ff = d_ff
 
         ### YOUR CODE HERE
-        self.layer_norm = torch.nn.LayerNorm(d_model)
-        self.linear1 = torch.nn.Linear(d_model, d_ff)
-        self.activation = torch.nn.SiLU()
-        self.dropout_1 = torch.nn.Dropout(p=dropout)
-        self.linear2 = torch.nn.Linear(d_ff, d_model) 
-        self.dropout_2 = torch.nn.Dropout(p=dropout)
+        self.layer_norm = ...
+        self.linear1 = ...
+        self.activation = ...
+        self.dropout_1 = ...
+        self.linear2 = ...
+        self.dropout_2 = ...
 
     def forward(self, x):
         """
@@ -27,11 +27,6 @@ class ConformerFeedForward(torch.nn.Module):
             :return torch.Tensor: (batch, time, d_model)
         """
         ### YOUR CODE HERE
-        x = self.layer_norm(x)
-        x = self.linear1(x)
-        x = self.activation(x)
-        x = self.dropout_1(x)
-        x = self.linear2(x)
-        x = self.dropout_2(x)
+        ...
         
         return x

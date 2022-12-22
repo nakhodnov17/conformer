@@ -45,24 +45,19 @@ class SpecAugment(torch.nn.Module):
             for i in range(self.freq_masks):
                 # Sample range in frequency domain and zero in out
                 ### YOUR CODE HERE
-                rng = self._rng.randint(0, self.freq_width)
-                pos = self._rng.randint(0, d)
-                input_spec[idx, pos:(pos + rng)] = 0
-
+                ...
 
             for i in range(self.time_masks):
                 # Determine maximum cutout width
                 ### YOUR CODE HERE
                 if isinstance(self.time_width, float):
-                    time_width = int(length[idx] * self.time_width)
+                    ...
                 else:
                     time_width = self.time_width
 
                 # Sample rectangle in time domain and zero in out
                 ### YOUR CODE HERE
-                rng = self._rng.randint(0, time_width)
-                pos = self._rng.randint(0, length[idx])
-                input_spec[idx, :, pos:(pos + rng)] = 0
+                ...
 
         return input_spec
 
@@ -89,18 +84,13 @@ class SpecCutout(torch.nn.Module):
             :param torch.Tensor input_spec: (batch, d, time)
             :return torch.Tensor: (batch, d, time)
         """
-        batch, d, time = input_spec.shape  # we'r using time, not length???? what about padding????
+        batch, d, time = input_spec.shape
 
         for idx in range(batch):
             for i in range(self.rect_masks):
                 # Sample rectangle in frequency-time domain and zero in out
                 ### YOUR CODE HERE
-                freq_rng = self._rng.randint(0, self.rect_freq)
-                time_rng = self._rng.randint(0, self.rect_time)
-                freq_pos = self._rng.randint(0, d - freq_rng)
-                time_pos = self._rng.randint(0, time - time_rng)
-                
-                input_spec[idx, freq_pos:(freq_pos + freq_rng), time_pos:(time_pos + time_rng)] = 0
+                ...
                 
         return input_spec
 

@@ -10,10 +10,7 @@ def make_seq_mask(features, lengths):
         :return torch.Tensor: (batch, 1, time)
     """
     ### YOUR CODE HERE
-    mask = torch.arange(features.shape[2], device=lengths.device, dtype=lengths.dtype)
-    mask = mask < lengths.unsqueeze(1)
-    mask = mask.unsqueeze(1)
-
+    ...
     return mask
 
 
@@ -61,8 +58,8 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
         if self.training and self._dither_value > 0.0:
             # Sample random noise with defined magnitude and add it to the signal
             ### YOUR CODE HERE
-            noise = torch.randn(signals.shape, device=signals.device) * self._dither_value
-            signals += noise
+            noise = ...
+            signals = ...
         return signals
 
     def _apply_preemphasis(self, signals):
@@ -71,9 +68,9 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
             :return torch.Tensor: (batch, time)
         """
         if self._preemphasis_value is not None:
-            # Transform signal as follows: s_{i + 1} -> s_{i + 1} - pv * s_i
+            # Transform signal as follows: s_i -> s_i - pv * s_{i + 1}
             ### YOUR CODE HERE
-            signals[:, 1:] -= signals[:, :-1] * self._preemphasis_value
+            ...
         return signals
 
     def _apply_normalization(self, features, lengths, eps=1e-5):
@@ -86,19 +83,15 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
         # Compute statistics for each object and each feature separately
         # Do not count masked elements that corresponds to padding
         ### YOUR CODE HERE
-        features.masked_fill_(mask, 0) # (batch, d, time)
-        means = torch.sum(features, dim=-1, keepdims=True) / lengths[:, None, None] # (batch, d, 1)
-        vrs = torch.sum(torch.pow(features - means, 2).masked_fill(mask, 0), dim=-1, keepdims=True) / (lengths[:, None, None] - 1)
-        vrs.clamp_(float(2.0 ** -24))
-        stds = vrs.sqrt() # (batch, d, 1)
+        means = ... # (batch, d, 1)
+        stds = ... # (batch, d, 1)
 
         # Normalize non-masked elements. Use eps to prevent by-zero-division
         ### YOUR CODE HERE
-        features = (features - means) / (stds + eps)
-        
+        features = ...
         # Set masked elements to zero
         ### YOUR CODE HERE
-        features.masked_fill_(mask, 0) # (batch, d, time)
+        features = ...
 
         return features
 
@@ -112,26 +105,24 @@ class AudioToMelSpectrogramPreprocessor(torch.nn.Module):
         """
         # Apply dithering
         ### YOUR CODE HERE
-        signals = self._apply_dithering(signals)
+        signals = ...
         # Apply preemphasis
         ### YOUR CODE HERE
-        signals = self._apply_preemphasis(signals)
+        signals = ...
         # Compute mel spectrogram features
         ### YOUR CODE HERE
-        features = self._mel_spec_extractor(signals)
-        
+        features = ...
         # Compute log mel spectrogram features. 
         # Use eps to prevent underflow in log
         ### YOUR CODE HERE
-        features = torch.log(features + eps)
+        features = ...
 
         # Compute features lengths
         ### YOUR CODE HERE
-        feature_lengths = torch.div(lengths, self._n_window_stride, rounding_mode="floor") + 1
-        
+        feature_lengths = ...
         # Apply features normalization
         ### YOUR CODE HERE
-        features = self._apply_normalization(features, feature_lengths)
+        features = ...
 
         return features, feature_lengths
 
@@ -148,7 +139,7 @@ def calc_length(length, conv_params):
     dillation = conv_params.get('dillation', 1)
 
     ### YOUR CODE HERE
-    return torch.div((length + 2 * padding - (kernel_size - 1) * dillation - 1), stride, rounding_mode="floor") + 1
+    ...
 
 
 class ConvSubsampling(torch.nn.Module):
@@ -177,25 +168,17 @@ class ConvSubsampling(torch.nn.Module):
         in_channels = 1
 
         conv_layers = []
-        out_features = self._feat_in
+        out_features = torch.tensor(self._feat_in, dtype=torch.long)
         # Create and append subsampling convolution layers to the list
         # Compute number of output features after this layers. Use calc_length
         ### YOUR CODE HERE
-        for i in range(self._sampling_num):
-            conv_layers.append(torch.nn.Conv2d((1 if i == 0 else self._conv_channels),
-                                             self._conv_channels,
-                                             self.conv_params["kernel_size"],
-                                             stride=self.conv_params["stride"],
-                                             padding=self.conv_params["padding"]))
-            conv_layers.append(activation)
-            out_features = calc_length(out_features, self.conv_params)
+        ...
 
         self.conv = torch.nn.Sequential(*conv_layers)
 
         # Create linear projection layer
         ### YOUR CODE HERE
-
-        self.out = torch.nn.Linear(out_features * self._conv_channels, feat_out)
+        self.out = ...
 
     def forward(self, x, lengths):
         """
@@ -205,18 +188,14 @@ class ConvSubsampling(torch.nn.Module):
         """
         # Compute output sequence length. Use calc_length
         ### YOUR CODE HERE
-        for i in range(self._sampling_num):
-            lengths = calc_length(lengths, self.conv_params)
-        
+        ...
+
         # Apply convolution layers
         ### YOUR CODE HERE
-        
-        x.unsqueeze_(1)
-        x = self.conv.forward(x)
-        x = torch.transpose(x, 1, 2).reshape(x.shape[0], x.shape[2], -1)  # Making 4D tensor 3D by combining channels and features
+        ...
         
         # Apply feed forward layer
         ### YOUR CODE HERE
-        x = self.out(x)
+        ...
 
         return x, lengths
