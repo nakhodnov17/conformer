@@ -93,9 +93,9 @@ def train(
         
         
         # evaluating model to see its progress
-        for dataloader in val_dataloaders:
-            wer_res, ctc_res = evaluate(model, tokenizer, val_dataloader, device, leave_pbar=False)
-            epoch_pbar.set_postfix(wer=wer_res, ctc_loss=ctc_res)
+        for key, dataloader in val_dataloaders.items():
+            wer_res, ctc_res = evaluate(model, tokenizer, dataloader, device, leave_pbar=False)
+            epoch_pbar.set_postfix(validation=key, wer=wer_res, ctc_loss=ctc_res)
         
         # saving weights to 
         current_weights = model.state_dict()
