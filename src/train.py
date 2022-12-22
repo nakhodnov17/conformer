@@ -1,5 +1,6 @@
 import torch
 import os
+import wandb
 
 from tqdm.notebook import tqdm 
 from src.metrics import WERMetric, CTCLossMetric
@@ -16,7 +17,7 @@ def evaluate(model, tokenizer, dataloader, device, compute_frequency=10, verbose
     wermetric.to(device)
     ctclossmetric.to(device)
     
-    for batch in (eval_pbar := tqdm(dataloader, leave=leave_pbar, total=len(dataloader))):
+    for batch in (eval_pbar := tqdm(dataloader, leave=leave_pbar, total=len(dataloader), disable=not verbose)):
         batch["audio"] = batch["audio"].to(device)
         batch["audio_len"] = batch["audio_len"].to(device)
         batch["tokens"] = batch["tokens"].to(device)
@@ -39,8 +40,11 @@ def evaluate(model, tokenizer, dataloader, device, compute_frequency=10, verbose
 def train( 
         model, tokenizer, grad_scaler, optimizer, scheduler, 
         num_epochs, train_dataloader, val_dataloaders, device, 
-        accumulate_grad_batches=1, compute_frequency=10, model_dir=None, verbose=True 
-        ):
+        accumulate_grad_batches=1, compute_frequency=10, model_dir=None,
+        verbose=True, run=None):
+    if not run:
+        run = wandb.init(project="Conformer_Model", settings=wandb.Settings(start_method="thread"))
+    
     wermetric = WERMetric(len(tokenizer), tokenizer)
     ctclossmetric = CTCLossMetric()
     
@@ -48,13 +52,14 @@ def train(
     ctclossmetric.to(device)
     model.to(device)
     
-    for epoch in (epoch_pbar := tqdm(range(num_epochs), total=num_epochs)):
+    for epoch in (epoch_pbar := tqdm(range(num_epochs), total=num_epochs, disable=not verbose)):
         epoch_pbar.set_description("Processing epoch num %i" % epoch)
+        run.log({"epoch num": epoch})
         
         model.train()
         optimizer.zero_grad()
         
-        for idx, batch in (batch_pbar := tqdm(enumerate(train_dataloader), leave=False, total=len(train_dataloader))):
+        for idx, batch in (batch_pbar := tqdm(enumerate(train_dataloader), leave=False, total=len(train_dataloader), disable=not verbose)):
             
             # setting appropriate device for batch
             batch["audio"] = batch["audio"].to(device)
@@ -72,9 +77,12 @@ def train(
             wermetric.update(log_probs, encoding_lengths, batch["text"])
             ctclossmetric.update(loss.sum(), len(loss))
             
-            
             # calculating gradients
-            (loss.mean()).backward()
+            ((total_loss := loss.mean()) / accumulate_grad_batches).backward()
+            
+            # logging total loss and last learning rate
+            if verbose:
+                run.log({"total loss": total_loss, "learning rate": scheduler.get_last_lr()[0]})
             
             # making gradient descent step w.r.t. accumulation
             if (idx + 1) % accumulate_grad_batches == 0:
@@ -89,21 +97,26 @@ def train(
                 optimizer.zero_grad()
             
             if (idx + 1) % compute_frequency == 0:
-                batch_pbar.set_postfix(wer=wermetric.compute(), ctcloss=ctclossmetric.compute())
+                batch_pbar.set_postfix(wer=(wer_res := wermetric.compute()), ctcloss=(ctc_res := ctclossmetric.compute()))
+                if verbose:
+                    run.log({"training word error rate": wer_res[0], "training ctc loss": ctc_res[0]})
         
         
         # evaluating model to see its progress
         for key, dataloader in val_dataloaders.items():
-            wer_res, ctc_res = evaluate(model, tokenizer, dataloader, device, leave_pbar=False)
-            epoch_pbar.set_postfix(validation=key, wer=wer_res, ctc_loss=ctc_res)
+            wer_res, ctc_res = evaluate(model, tokenizer, dataloader, device, leave_pbar=False, verbose=verbose)
+            if verbose:
+                epoch_pbar.set_postfix(validation=key, wer=wer_res, ctc_loss=ctc_res)
+                run.log({key + " word error rate": wer_res[0], key + " ctc loss": ctc_res[0]})
         
-        # saving weights to 
-        current_weights = model.state_dict()
-        file_name = os.path.join(model_dir, "model-" + str(epoch) + "pt")
-        torch.save(current_weights, file_name)
-        
-        # deletting old weights
-        if epoch > 4:
-            os.remove(os.path.join(model_dir, "model-" + str(epoch - 5) + "pt"))
-        
-        
+        # saving weights to file
+        if verbose:
+            current_weights = model.state_dict()
+            file_name = os.path.join(model_dir, "model-" + str(epoch) + ".pt")
+            torch.save(current_weights, file_name)
+
+            # deletting old weights
+            if epoch > 4:
+                os.remove(os.path.join(model_dir, "model-" + str(epoch - 5) + ".pt"))
+    if verbose:
+        run.finish()
