@@ -45,7 +45,7 @@ def beam_search_decoding(logits, logits_len, blank_id, tokenizer, beam_size=10):
     
     hypotheses = []
     
-    for time_tokens_tensor, tokens_len in zip(logits, logits_len):
+    for time_tokens_tensor, tokens_len in zip(logits.cpu(), logits_len.cpu()):
         hypos = {(blank_id,)}
         prob_blank = defaultdict(lambda: float(-1e9))
         prob_blank[(blank_id,)] = 0
@@ -59,10 +59,11 @@ def beam_search_decoding(logits, logits_len, blank_id, tokenizer, beam_size=10):
         for tokens_tensor in time_tokens_tensor[:tokens_len]:
             for string in hypos:
                 for token in range(len(tokens_tensor)):
+                    p_token = tokens_tensor[token].item()
                     if token == blank_id:
                         new_hypos.add(string)
                                                 
-                        new_prob_blank[string] = np.logaddexp(new_prob_blank[string], tokens_tensor[token] + np.logaddexp(
+                        new_prob_blank[string] = np.logaddexp(new_prob_blank[string], p_token + np.logaddexp(
                             prob_blank[string], prob_non_blank[string]
                         ))
                         
@@ -70,23 +71,23 @@ def beam_search_decoding(logits, logits_len, blank_id, tokenizer, beam_size=10):
                         if string[-1] == token:
                             new_hypos.add(string)
                             new_prob_non_blank[string] = np.logaddexp(new_prob_non_blank[string],
-                                token_tonsor[token] + prob_non_blank[string]
+                                p_token + prob_non_blank[string]
                             )
                             
                             new_hypos.add((*string, token))
                             new_prob_non_blank[(*string, token)] = np.logaddexp(new_prob_non_blank[(*string, token)],
-                                prob_blank[string] + tokens_tensor[token]
+                                prob_blank[string] + p_token
                             )
                         else:
                             new_hypos.add((*string, token))
                             new_prob_non_blank[(*string, token)] = np.logaddexp(new_prob_non_blank[(*string, token)],
-                                tokens_tensor[token] + np.logaddexp(prob_blank[string], prob_non_blank[string])
+                                p_token + np.logaddexp(prob_blank[string], prob_non_blank[string])
                             )
             list1 = []
             for key in new_hypos:
                 list1.append((key, new_prob_blank[key], 0))
                 list1.append((key, new_prob_non_blank[key], 1))
-            list1.sort(key=lambda: x[1], reverse=True)
+            list1.sort(key=lambda x: x[1], reverse=True)
             
             hypos.clear()
             prob_blank.clear()
@@ -103,7 +104,7 @@ def beam_search_decoding(logits, logits_len, blank_id, tokenizer, beam_size=10):
                     prob_non_blank[list1[i][0]] = list1[i][1]
         list1 = []
         for key in hypos:
-            list1.append((tokenizer.decode(list(key)), np.logaddexp(prob_blank[key], prob_non_blank[key])))
+            list1.append((tokenizer.decode(list(key[1:])), np.logaddexp(prob_blank[key], prob_non_blank[key])))
         hypotheses.append(list1)
     
     return hypotheses
