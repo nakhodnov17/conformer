@@ -19,10 +19,11 @@ import torchaudio
 from confromer import Conformer
 from metrics import ctc_greedy_decoding
 
+tmp_audio_path = './CuttedAudio'
 BOT_TOKEN = '5892376937:AAFxHe9BFmU3MPCflZCeMV0Ms6kREGg91Bk'
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
-
+os.makedirs(tmp_audio_path, exist_ok=True)
 
 class Settings:
     answer_type = ""
@@ -37,7 +38,10 @@ class Settings:
 
 settings = Settings()
 
-device = torch.device("cpu")
+if torch.cuda.is_available():
+    device = torch.device("cuda", 0)
+else:
+    device = torch.device("cpu")
 
 conformer = Conformer()
 conformer.eval()
@@ -170,8 +174,9 @@ async def audio(message: types.Message):
     step = settings.segment_length-settings.general_part
     for i in range(0, len(song), step):
         cut = song[i:i + settings.segment_length]
-        cut.export("CuttedAudio/cut" + str(i//8000 + 1) + ".wav", format="wav")
-        paths.append("CuttedAudio/cut" + str(i//8000 + 1) + ".wav")
+        cut_path = os.path.join(tmp_audio_path, 'cut' + str(i//8000 + 1) + ".wav")
+        cut.export(cut_path, format="wav")
+        paths.append(cut_path)
     print("ggg")
 
     ms = process_audios(conformer, sp_tokenizer, paths)
@@ -185,7 +190,8 @@ async def audio(message: types.Message):
         text += ten_sec
 
     for i in range(len(song) // ten_seconds + 1):
-        os.remove("CuttedAudio/cut" + str(i + 1) + ".wav")
+        cut_path = os.path.join(tmp_audio_path, 'cut' + str(i + 1) + ".wav")
+        os.remove(cut_path)
 
     await message.answer(text)
 
@@ -203,8 +209,9 @@ async def text(message: types.Message):
     song = AudioSegment.from_file("audioxol.mp3")
     for i in range(0, len(song), settings.segment_length-settings.general_part):
         cut = song[i:i + settings.segment_length]
-        cut.export("CuttedAudio/cut" + str(i + 1) + ".wav", format="wav")
-        paths.append("CuttedAudio/cut" + str(i + 1) + ".wav")
+        cut_path = os.path.join(tmp_audio_path, 'cut' + str(i + 1) + ".wav")
+        cut.export(cut_path, format="wav")
+        paths.append(cut_path)
     print("cutted")
     ms = process_audios(conformer, sp_tokenizer, paths)
     print(ms)
