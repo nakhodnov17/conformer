@@ -6,6 +6,7 @@ import editdistance
 import numpy as np
 import math
 from collections import defaultdict
+from ctcdecode import CTCBeamDecoder
 
 @torch.no_grad()
 def ctc_greedy_decoding(logits, logits_len, blank_id, tokenizer):
@@ -30,6 +31,35 @@ def ctc_greedy_decoding(logits, logits_len, blank_id, tokenizer):
         tokens_list = tokens_tensor.tolist()
         hypotheses.append(tokenizer.decode(tokens_list))
 
+    return hypotheses
+
+def fast_beam_search_decoding(logits, blank_id, tokenizer, beam_size=10, alpha=0, beta=0):
+    """Decode text from logits using beam search. 
+    Collapse all repeated tokens and then remove all blanks.
+        :param torch.FloatTensor logits: (batch, time, vocabulary)
+        :param int blank_id:
+        :param sentencepiece.SentencePieceProcessor tokenizer:
+        :param int beam_size:
+        :returns: List[List[Tuple[str, float]]]
+    """
+    
+    list1 = []
+    for indx in range(128):
+        token = tokenizer.id_to_piece(indx)
+        token = token.replace('▁', ' ')
+        list1.append(token)
+    list1.append('blank')
+    print(list1, '1!')
+    decoder = CTCBeamDecoder(list1, model_path='/home/jupyter/work/resources/lm_50x50.binary', alpha=alpha, beta=beta
+                             beam_width=beam_size, blank_id=blank_id, log_probs_input=True, is_token_based=True)
+    beam_results, beam_scores, timesteps, out_lens = decoder.decode(logits)
+    hypotheses = []
+    for batch, lens, scores in zip(beam_results, out_lens, beam_scores):
+        list1 = []
+        for tokens, tokens_len, score in zip(batch, lens, scores):
+            print(tokens[:tokens_len].tolist())
+            list1.append((tokenizer.decode(tokens[:tokens_len].tolist()), score))
+        hypotheses.append(list1)
     return hypotheses
 
 def beam_search_decoding(logits, logits_len, blank_id, tokenizer, beam_size=10):
