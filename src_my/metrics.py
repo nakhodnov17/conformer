@@ -50,7 +50,7 @@ def fast_beam_search_decoding(logits, blank_id, tokenizer, beam_size=10, alpha=0
         list1.append(token)
     list1.append('blank')
     print(list1, '1!')
-    decoder = CTCBeamDecoder(list1, model_path='/home/jupyter/work/resources/lm_50x50.binary', alpha=alpha, beta=beta
+    decoder = CTCBeamDecoder(list1, model_path='/home/jupyter/work/resources/lm_50x50.binary', alpha=alpha, beta=beta,
                              beam_width=beam_size, blank_id=blank_id, log_probs_input=True, is_token_based=True)
     beam_results, beam_scores, timesteps, out_lens = decoder.decode(logits)
     hypotheses = []
