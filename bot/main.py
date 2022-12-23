@@ -18,26 +18,36 @@ import torch
 import torchaudio
 from confromer import Conformer
 from metrics import ctc_greedy_decoding
+from metrics import fast_beam_search_decoding
 
+tmp_audio_path = './CuttedAudio'
 BOT_TOKEN = '5892376937:AAFxHe9BFmU3MPCflZCeMV0Ms6kREGg91Bk'
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(bot)
-
+os.makedirs(tmp_audio_path, exist_ok=True)
 
 class Settings:
     answer_type = ""
     segment_length = 0
     general_part = 0
+    processing_type = ""
+    beam_size = 10
+    alpha = 0
+    beta = 0
 
     def __init__(self):
         self.answer_type = "array"
         self.segment_length = 10000
         self.general_part = 2000
+        self.processing_type = "ctc"
 
 
 settings = Settings()
 
-device = torch.device("cpu")
+if torch.cuda.is_available():
+    device = torch.device("cuda", 0)
+else:
+    device = torch.device("cpu")
 
 conformer = Conformer()
 conformer.eval()
@@ -65,6 +75,7 @@ set_default_commands(dp)
 
 
 def process_audios(model, tokenizer, paths):
+
     elements = []
     for path in paths:
         audio, audio_lenght = dataset.open_audio(path, 16000)
@@ -76,7 +87,16 @@ def process_audios(model, tokenizer, paths):
 
     log_pb, enc_len, gp = model(batch["audio"], batch["audio_len"])
 
-    return (ctc_greedy_decoding(log_pb, enc_len, len(tokenizer), tokenizer))
+    if (settings.processing_type=="beam"):
+        array_hyp = fast_beam_search_decoding(log_pb, len(tokenizer), tokenizer, settings.beam_size, settings.alpha, settings.beta)
+        #array_hyp = [[("aboba", 123), ("boba", 100), ("aaaaa", 50)], [("help", 2000), ("hhh", 12.453)], [("me", 100), ("ss ghoul", 0)]]
+
+        ret_array = []
+        for i in range(len(array_hyp)):
+            ret_array.append(array_hyp[i][0][0])
+        return (ret_array)
+    else:
+        return ctc_greedy_decoding(log_pb, enc_len, len(tokenizer), tokenizer)
 
 
 #@dp.message_handler(commands=['text', 'array', 'set_length', 'set_general_part'])
@@ -86,7 +106,9 @@ async def set_type(message: types.Message):
 
     print("command " + message.text)
     command = message.text.split()[0]
-    if (command == "/text"):
+    if (command[0]!="/"):
+        await text(message)
+    elif (command == "/text"):
         settings.answer_type = "text"
         await message.answer("Вывод в форме текста")
     elif (command == "/array"):
@@ -113,8 +135,30 @@ async def set_type(message: types.Message):
             await message.answer("Установлена длина отрезка " + message.text.split()[1])
         except:
             await message.answer("Введите число")
-    else:
-        await text(message)
+    elif command == "/ctc":
+        settings.processing_type = "ctc"
+        await message.answer("Используется ctc")
+    elif command == "/beam":
+        settings.processing_type = "beam"
+        await message.answer("Используется beam")
+    elif command == "/alpha":
+        try:
+            settings.alpha = int(message.text.split()[1])
+            await message.answer("alpha = " + str(settings.alpha))
+        except:
+            await message.answer("Введите число")
+    elif command == "/beta":
+        try:
+            settings.beta = int(message.text.split()[1])
+            await message.answer("beta = " + str(settings.beta))
+        except:
+            await message.answer("Введите число")
+    elif command == "/beamsize":
+        try:
+            settings.beam_size = int(message.text.split()[1])
+            await message.answer("beam_size = " + str(settings.beam_size))
+        except:
+            await message.answer("Введите число")
 
 def get_audio(url):
     try:
@@ -170,8 +214,9 @@ async def audio(message: types.Message):
     step = settings.segment_length-settings.general_part
     for i in range(0, len(song), step):
         cut = song[i:i + settings.segment_length]
-        cut.export("CuttedAudio/cut" + str(i//8000 + 1) + ".wav", format="wav")
-        paths.append("CuttedAudio/cut" + str(i//8000 + 1) + ".wav")
+        cut_path = os.path.join(tmp_audio_path, 'cut' + str(i//8000 + 1) + ".wav")
+        cut.export(cut_path, format="wav")
+        paths.append(cut_path)
     print("ggg")
 
     ms = process_audios(conformer, sp_tokenizer, paths)
@@ -185,7 +230,11 @@ async def audio(message: types.Message):
         text += ten_sec
 
     for i in range(len(song) // ten_seconds + 1):
-        os.remove("CuttedAudio/cut" + str(i + 1) + ".wav")
+        cut_path = os.path.join(tmp_audio_path, 'cut' + str(i + 1) + ".wav")
+        os.remove(cut_path)
+
+    if (text == ""):
+        text = "No text"
 
     await message.answer(text)
 
@@ -203,8 +252,9 @@ async def text(message: types.Message):
     song = AudioSegment.from_file("audioxol.mp3")
     for i in range(0, len(song), settings.segment_length-settings.general_part):
         cut = song[i:i + settings.segment_length]
-        cut.export("CuttedAudio/cut" + str(i + 1) + ".wav", format="wav")
-        paths.append("CuttedAudio/cut" + str(i + 1) + ".wav")
+        cut_path = os.path.join(tmp_audio_path, 'cut' + str(i + 1) + ".wav")
+        cut.export(cut_path, format="wav")
+        paths.append(cut_path)
     print("cutted")
     ms = process_audios(conformer, sp_tokenizer, paths)
     print(ms)
